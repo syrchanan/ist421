@@ -1,0 +1,282 @@
+setwd("~/School/Syracuse/Jr - Sem 2/IST 421/f1_data")
+library(tidyverse)
+library(lubridate)
+library(RColorBrewer)
+
+##### EDA #####
+results <- read_csv("results.csv")
+#View(results)
+constructors <- read_csv("constructors.csv")
+#View(constructors)
+drivers <- read_csv("drivers.csv")     
+#View(drivers)
+status.lookup <- read_csv("status.csv")
+#View(status.lookup)
+pit_stops <- read_csv("pit_stops.csv")
+#View(pit_stops)
+races <- read_csv("races.csv")
+#View(races)
+
+drivers %>% 
+  select(driverId, driverRef) -> driver.lookup
+
+constructors %>%
+  select(constructorId, constructorRef, own_engine) -> constructor.lookup
+
+last_grid <- c('hamilton', 'bottas',
+                  'vettel', 'leclerc',
+                  'albon', 'max_verstappen',
+                  'norris', 'sainz',
+                  'ricciardo', 'ocon',
+                  'gasly', 'kvyat',
+                  'perez', 'stroll',
+                  'raikkonen', 'giovinazzi',
+                  'grosjean', 'kevin_magnussen',
+                  'latifi', 'russell')
+
+last_constructor <- c('mercedes', 'red_bull',
+                      'mclaren', 'racing_point',
+                      'renault', 'ferrari',
+                      'alphatauri', 'alfa',
+                      'haas', 'williams')
+
+results %>% 
+  inner_join(.,driver.lookup) %>% 
+  inner_join(.,constructor.lookup) -> driver_constructor_results
+
+##### __NOT__ Average Driver Position by Constructor They Drive For vs. Average Num of Races with Constructor #####
+
+driver_constructor_results %>% 
+  #filter(driverRef %in% last_grid) %>% 
+  group_by(driverRef, constructorRef) %>%
+  count(driverId) %>% 
+  summarise(count = sum(n)) %>% 
+  summarise(avg_race_constructor = mean(count)) %>%  
+  ungroup() -> avg_race_per_constructor
+
+driver_constructor_results %>%
+ # filter(driverRef %in% last_grid) %>%
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(position)) %>% 
+  group_by(driverRef, constructorRef) %>% 
+  summarise(avg_position_constructor = mean(position)) %>% 
+  ungroup() -> avg_position_per_constructor
+
+inner_join(avg_race_per_constructor,avg_position_per_constructor) -> combined_per_constructor
+
+ggplot(combined_per_constructor) +
+  geom_point(aes(x=avg_position_constructor, y=avg_race_constructor)) +
+  xlim(c(0,20)) +
+  geom_smooth(aes(y=avg_race_constructor, x=avg_position_constructor), method = "lm")
+
+##### __NOT__ Grid vs Position #####
+
+driver_constructor_results %>% 
+  mutate(position = as.numeric(position), grid = as.numeric(grid)) %>% 
+  filter(!is.na(position)) %>% 
+  filter(!is.na(grid)) %>% 
+  select(position, grid, constructorId) %>%
+ggplot() +
+  geom_point(aes(grid, position)) +
+  geom_smooth(aes(y=position, x=grid), method = "lm")
+
+
+##### __NOT__ Average Speed by Constructor vs. Position (see if car matters or if driver does) #####
+
+driver_constructor_results %>% 
+  group_by(constructorRef, driverRef) %>% 
+  mutate(fastestLapSpeed = as.numeric(fastestLapSpeed), position = as.numeric(position)) %>% 
+  filter(!is.na(fastestLapSpeed)) %>% 
+  filter(!is.na(position)) %>% 
+  summarise(avg_speed = mean(fastestLapSpeed), avg_position = mean(position)) %>% 
+ggplot() +
+  geom_point(aes(avg_position, avg_speed))+
+  geom_smooth(aes(y=avg_speed, x=avg_position), method = "lm")
+
+
+##### Engine by Constructor vs Purchased by Finishing Position #####
+
+        # methodology - look up via wiki links provided
+        # if constructor has done both, the last/current phase is recorded
+
+driver_constructor_results %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  mutate(fastestLapSpeed = as.numeric(fastestLapSpeed), position = as.numeric(position)) %>% 
+  filter(!is.na(fastestLapSpeed)) %>% 
+  filter(!is.na(position)) %>% 
+ggplot() +
+  geom_jitter(aes(position, fastestLapSpeed, color = own_engine))+
+  ggtitle('Finishing Position vs Fastest Lap Speed by Engine Constructors vs Engine Purchasers', subtitle = 'Engine constructors tend to finish in a better position and generally earn slightly faster lap speeds than their counterparts')+
+  theme_minimal()+
+  xlab('Finishing Position')+
+  ylab('Fastest Lap Speed')+
+  scale_color_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)),
+                     labels = c("Purchased",'Built'))+
+  labs(caption = 'Source: Kaggle (Vopani)')
+
+ggsave("f1_positionvsfastestlap.pdf")
+
+##### Engine by Constructor vs Purchased by Podium Position in 2020#####
+
+driver_constructor_results %>% 
+  mutate(own_engine = own_engine == "Y") %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(fastestLapSpeed)) %>% 
+  filter(!is.na(position)) %>% 
+  filter(position <= 3) %>% 
+  filter(constructorRef %in% last_constructor) %>% 
+  filter(driverRef %in% last_grid) %>% 
+ggplot() + 
+  geom_bar(aes(position, fill = own_engine), position = 'dodge')+
+  ggtitle('Podium Positions Won in 2020 by Engine Constructors', subtitle = 'Constructors who build and use their own engines consistently finish on the podium more often than those who purchase their engines')+
+  theme_minimal()+
+  xlab('Finishing Position')+
+  ylab('Total')+
+  scale_fill_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
+                    labels = c("Purchased",'Built'))+
+  labs(caption = 'Source: Kaggle (Vopani)')
+
+ggsave("f1_podiumconstructors.pdf")
+
+##### Linear model of total wins by engine manufacturers  #####
+
+races %>% 
+  select("raceId", "year") -> race_year_lookup
+
+races %>% count(vars = year) -> race_per_year
+
+driver_constructor_results %>%
+  inner_join(.,race_year_lookup) %>% 
+  mutate(own_engine = own_engine == "Y") %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  filter(position %in% c('1', '2', '3')) %>%
+  filter(own_engine == T) %>% 
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(position)) %>% 
+  ungroup() %>% 
+  group_by(own_engine, year) %>%
+  summarise(total = sum(position)) %>% 
+ggplot()+
+  geom_line(aes(year, total), color = rgb(0, 222, 214, maxColorValue = 255), lwd = 1)+
+  ggtitle('Total Race Wins by Engine Manufacturers Since 1950', subtitle = "Constructors who build and use their own engines have regularly been competitive in F1, with a drastic increase in performance over the last 20 seasons") +
+  theme_minimal()+
+  ylab('Total Race Wins')+
+  xlab('')+
+  labs(caption = 'Source: Kaggle (Vopani)')
+
+ggsave("f1_winenginemaker.pdf")
+              
+              
+##### Engine by Constructor vs Purchased by Grid Compared to Finishing Position in 2020 #####
+
+driver_constructor_results %>% 
+  filter(constructorRef %in% last_constructor) %>%
+  filter(driverRef %in% last_grid) %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  mutate(grid = as.numeric(grid)) %>% 
+  filter(!is.na(grid)) %>%
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(position)) %>%
+ggplot()+
+  geom_point(aes(grid, position ,color = own_engine))+
+  geom_smooth(aes(y=position, x = grid), se=F, method = 'lm', color = 'gray')+
+  facet_wrap(vars(constructorRef))+
+  ggtitle("Grid Position vs Finishing Position by Constructor in 2020", subtitle = "For the constructors who build their own engine, there tends to be more clustering in the lower left, indicating higher qualifying and finishing positions")+
+  theme_minimal()+
+  xlab('Grid Position')+
+  ylab('Finishing Position')+
+  scale_color_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
+                     labels = c("Purchased",'Built'))+
+  labs(caption = 'Source: Kaggle (Vopani)')
+
+ggsave('f1_gridvsposition.pdf')
+
+##### Engine by COnstructor vs Purchased by Points per Constructor #####
+
+driver_constructor_results %>% 
+  left_join(.,race_year_lookup) -> driver_constructor_results_year
+
+driver_constructor_results_year %>%
+  filter(year == '2020') %>% 
+  mutate(points = as.numeric(points)) %>% 
+  filter(!is.na(points)) %>%
+  ungroup() %>% 
+  group_by(constructorRef, driverRef, own_engine) %>%
+  filter(constructorRef %in% last_constructor, driverRef %in% last_grid) %>% 
+  summarise(sum_points = sum(points)) %>%
+  arrange(sum_points) -> stored_points_2020
+
+stored_points_2020$driverRef[5] <- "russell_merc"
+driver_order <- stored_points_2020$driverRef
+
+driver_order
+
+stored_points_2020 %>% 
+  mutate(driverRef = factor(driverRef, levels = driver_order)) %>% 
+ggplot()+
+  geom_col(aes(driverRef, sum_points, fill = own_engine)) +
+  coord_flip() +
+  ggtitle("Total Points per Driver on the 2020 Grid", subtitle = 'A majority of the points in 2020 were won by drivers who drove vehicles with the engine produced by their own constructor') +
+  theme_minimal() +
+  xlab("Driver")+
+  ylab("Total Points Earned")+
+  scale_fill_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
+                    labels = c("Purchased",'Built'))+
+  labs(caption = 'Source: Kaggle (Vopani)')
+
+ggsave('f1_pointsperdriver.pdf')
+
+
+
+#####GGANIMATE#####
+library(av)
+library(gifski)
+library(gganimate)
+
+animate <- driver_constructor_results %>%
+  inner_join(.,race_year_lookup) %>% 
+  mutate(own_engine = own_engine == "Y") %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  filter(position %in% c('1', '2', '3')) %>%
+  filter(own_engine == T) %>% 
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(position)) %>% 
+  ungroup() %>% 
+  group_by(own_engine, year) %>%
+  summarise(total = sum(position)) %>% 
+  ggplot()+
+  geom_line(aes(year, total), color = rgb(0, 222, 214, maxColorValue = 255), lwd = 1)+
+  ggtitle('Total Race Wins by Engine Manufacturers Since 1950', subtitle = "Constructors who build and use their own engines have regularly been competitive in F1, with a drastic increase in performance over the last 20 seasons") +
+  theme_minimal()+
+  ylab('Total Race Wins')+
+  xlab('')+
+  labs(caption = 'Source: Kaggle (Vopani)')+
+  #gganimate starts here
+  transition_reveal(year)
+
+animate(animate, width = 852, height = 480, renderer = gifski_renderer())
+anim_save("revealline.gif",path = "~/School/Syracuse/Jr - Sem 2/IST 421/f1_data/anim")
+
+
+animate2 <- driver_constructor_results %>% 
+  group_by(constructorRef, driverRef, own_engine) %>% 
+  mutate(fastestLapSpeed = as.numeric(fastestLapSpeed), position = as.numeric(position)) %>% 
+  filter(!is.na(fastestLapSpeed)) %>% 
+  filter(!is.na(position)) %>%
+  ggplot() +
+  geom_jitter(aes(position, fastestLapSpeed, color = own_engine))+
+  ggtitle('Finishing Position vs Fastest Lap Speed by Engine Constructors vs Engine Purchasers', subtitle = 'Engine constructors tend to finish in a better position and generally earn slightly faster lap speeds than their counterparts')+
+  theme_minimal()+
+  xlab('Finishing Position')+
+  ylab('Fastest Lap Speed')+
+  scale_color_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)),
+                     labels = c("Purchased",'Built'))+
+  labs(caption = 'Source: Kaggle (Vopani)')+
+  #gganimate starts here
+  transition_states(own_engine,transition_length = .5, state_length = 1)+
+  enter_fade()+
+  exit_fade()
+
+animate(animate2, width = 852, height = 480, renderer = gifski_renderer())
+anim_save("fade_state.gif",path = "~/School/Syracuse/Jr - Sem 2/IST 421/f1_data/anim")

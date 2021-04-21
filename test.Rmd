@@ -1,0 +1,46 @@
+---
+title: "R Markdown Test"
+author: "ME"
+date: "March 15, 2021"
+output: html_document
+---
+
+#### Greetings to markdown
+
+*Links for learning Markdown*
+
+* [rstudio](https://rmarkdown.rstudio.com/articles_intro.html)
+
+```{r,eval=FALSE}
+"Omit the result"
+dim(mtcars)
+```
+
+```{r,echo=FALSE}
+"Omit the code block and only returnt the result"
+"Helpful for plots (no code)"
+dim(mtcars)
+```
+
+Inline code looks like this: Two plus two equals `r 2+2`
+
+```{r}
+"insert a code chunk with Ctrl+Alt+I"
+```
+
+```{python, echo=FALSE}
+adjust = "adjust the coding language by replacing the R with python"
+print(adjust)
+```
+
+```{r}
+fake_letters <- letters[1:10]
+```
+
+```{r}
+py$adjust
+```
+```{python}
+print(r.fake_letters)
+```
+

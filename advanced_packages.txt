@@ -1,0 +1,3 @@
+plotly - powerful graphing package, rendered all in D3
+
+googleVis - export interactive plots in html, rendered using Google backend
