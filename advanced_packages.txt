@@ -2,4 +2,4 @@ plotly - powerful graphing package, rendered all in D3
 
 googleVis - export interactive plots in html, rendered using Google backend
 
-iGraph - network mapping and creation
+iGraph - network mapping and creation, use outside app to clean up aes()
