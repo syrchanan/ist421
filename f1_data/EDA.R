@@ -318,6 +318,8 @@ driver_constructor_results %>%
     labs(fill="% Built Engine",caption = 'Source: Kaggle (Vopani)')+
     ggtitle("Starting vs Finishing Position in 2020", subtitle = "Constructors who build their own engines tended to both start and finish better than those who did not")
   
+  ggsave("heatmap_engineconstructor.pdf")
+  
 ##### Drivers on Own Engine Teams vs Not#####
   
   driver_constructor_results_year %>% 
@@ -380,4 +382,6 @@ driver_constructor_results %>%
     ylab('Differential')+
     labs(fill="Constructor-Built Engine",caption = 'Source: Kaggle (Vopani)')+
     ggtitle("Number of First Places by Driver", subtitle = "Though the overall amount of constructor-built wins (303) is greater than non-constructor-built wins (276), the drivers' affect cannot be discounted")
+  
+  ggsave("driver_effect.pdf")
   
