@@ -43,56 +43,6 @@ results %>%
   inner_join(.,driver.lookup) %>% 
   inner_join(.,constructor.lookup) -> driver_constructor_results
 
-##### __NOT__ Average Driver Position by Constructor They Drive For vs. Average Num of Races with Constructor #####
-# 
-# driver_constructor_results %>% 
-#   #filter(driverRef %in% last_grid) %>% 
-#   group_by(driverRef, constructorRef) %>%
-#   count(driverId) %>% 
-#   summarise(count = sum(n)) %>% 
-#   summarise(avg_race_constructor = mean(count)) %>%  
-#   ungroup() -> avg_race_per_constructor
-# 
-# driver_constructor_results %>%
-#  # filter(driverRef %in% last_grid) %>%
-#   mutate(position = as.numeric(position)) %>% 
-#   filter(!is.na(position)) %>% 
-#   group_by(driverRef, constructorRef) %>% 
-#   summarise(avg_position_constructor = mean(position)) %>% 
-#   ungroup() -> avg_position_per_constructor
-# 
-# inner_join(avg_race_per_constructor,avg_position_per_constructor) -> combined_per_constructor
-# 
-# ggplot(combined_per_constructor) +
-#   geom_point(aes(x=avg_position_constructor, y=avg_race_constructor)) +
-#   xlim(c(0,20)) +
-#   geom_smooth(aes(y=avg_race_constructor, x=avg_position_constructor), method = "lm")
-
-###### __NOT__ Grid vs Position #####
-# 
-# driver_constructor_results %>% 
-#   mutate(position = as.numeric(position), grid = as.numeric(grid)) %>% 
-#   filter(!is.na(position)) %>% 
-#   filter(!is.na(grid)) %>% 
-#   select(position, grid, constructorId) %>%
-# ggplot() +
-#   geom_point(aes(grid, position)) +
-#   geom_smooth(aes(y=position, x=grid), method = "lm")
-# 
-# 
-###### __NOT__ Average Speed by Constructor vs. Position (see if car matters or if driver does) #####
-
-# driver_constructor_results %>% 
-#   group_by(constructorRef, driverRef) %>% 
-#   mutate(fastestLapSpeed = as.numeric(fastestLapSpeed), position = as.numeric(position)) %>% 
-#   filter(!is.na(fastestLapSpeed)) %>% 
-#   filter(!is.na(position)) %>% 
-#   summarise(avg_speed = mean(fastestLapSpeed), avg_position = mean(position)) %>% 
-# ggplot() +
-#   geom_point(aes(avg_position, avg_speed))+
-#   geom_smooth(aes(y=avg_speed, x=avg_position), method = "lm")
-# 
-
 ##### Engine by Constructor vs Purchased by Finishing Position #####
 
         # methodology - look up via wiki links provided
@@ -109,9 +59,8 @@ ggplot() +
   theme_minimal()+
   xlab('Finishing Position')+
   ylab('Fastest Lap Speed')+
-  scale_color_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)),
-                     labels = c("Purchased",'Built'))+
-  labs(caption = 'Source: Kaggle (Vopani)')
+  scale_color_viridis_d()+
+  labs(caption = 'Source: Vopani | Kaggle')
 
 ggsave("f1_positionvsfastestlap.pdf")
 
@@ -132,9 +81,8 @@ ggplot() +
   theme_minimal()+
   xlab('Finishing Position')+
   ylab('Total')+
-  scale_fill_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
-                    labels = c("Purchased",'Built'))+
-  labs(caption = 'Source: Kaggle (Vopani)')
+  scale_fill_viridis_d()+
+  labs(caption = 'Source: Vopani | Kaggle')
 
 ggsave("f1_podiumconstructors.pdf")
 
@@ -146,51 +94,41 @@ races %>%
 races %>% count(vars = year) -> race_per_year
 
 driver_constructor_results %>%
-  inner_join(.,race_year_lookup) %>% 
-  mutate(own_engine = own_engine == "Y") %>% 
-  group_by(constructorRef, driverRef, own_engine) %>% 
+  inner_join(.,race_year_lookup) %>%
+  mutate(own_engine = own_engine == "Y") %>%
   filter(position %in% c('1', '2', '3')) %>%
-  filter(own_engine == T) %>% 
   mutate(position = as.numeric(position)) %>% 
   filter(!is.na(position)) %>% 
-  ungroup() %>% 
-  group_by(own_engine, year) %>%
-  summarise(total = sum(position)) %>% 
+  filter(own_engine == T) %>% 
+  group_by(own_engine, year) %>% 
+  summarise(totalT = sum(position)) -> wins_by_manufacture
+
+driver_constructor_results %>%
+  inner_join(.,race_year_lookup) %>%
+  mutate(own_engine = own_engine == "Y") %>%
+  filter(position %in% c('1', '2', '3')) %>%
+  mutate(position = as.numeric(position)) %>% 
+  filter(!is.na(position)) %>% 
+  filter(own_engine == F) %>% 
+  group_by(own_engine, year) %>% 
+  summarise(totalF = sum(position)) -> wins_by_nonmanufacture
+  
+wins_by_manufacture %>% 
+  inner_join(wins_by_nonmanufacture, by = c('year' = 'year')) %>% 
+  select(year,totalT,totalF) %>% 
+  mutate(total = totalT + totalF) %>% 
+  mutate(proportionT = totalT/total) %>%
 ggplot()+
-  geom_line(aes(year, total), color = rgb(0, 222, 214, maxColorValue = 255), lwd = 1)+
+  geom_line(aes(year, proportionT), color = rgb(0, 222, 214, maxColorValue = 255), lwd = 1)+
   ggtitle('Total Race Wins by Engine Manufacturers Since 1950', subtitle = "Constructors who build and use their own engines have regularly been competitive in F1, with a drastic increase in performance over the last 20 seasons") +
   theme_minimal()+
   ylab('Total Race Wins')+
   xlab('')+
-  labs(caption = 'Source: Kaggle (Vopani)')
+  labs(caption = 'Source: Vopani | Kaggle')
 
 ggsave("f1_winenginemaker.pdf")
               
               
-##### Engine by Constructor vs Purchased by Grid Compared to Finishing Position in 2020 #####
-
-driver_constructor_results %>% 
-  filter(constructorRef %in% last_constructor) %>%
-  filter(driverRef %in% last_grid) %>% 
-  group_by(constructorRef, driverRef, own_engine) %>% 
-  mutate(grid = as.numeric(grid)) %>% 
-  filter(!is.na(grid)) %>%
-  mutate(position = as.numeric(position)) %>% 
-  filter(!is.na(position)) %>%
-ggplot()+
-  geom_point(aes(grid, position ,color = own_engine))+
-  geom_smooth(aes(y=position, x = grid), se=F, method = 'lm', color = 'gray')+
-  facet_wrap(vars(constructorRef))+
-  ggtitle("Grid Position vs Finishing Position by Constructor in 2020", subtitle = "For the constructors who build their own engine, there tends to be more clustering in the lower left, indicating higher qualifying and finishing positions")+
-  theme_minimal()+
-  xlab('Grid Position')+
-  ylab('Finishing Position')+
-  scale_color_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
-                     labels = c("Purchased",'Built'))+
-  labs(caption = 'Source: Kaggle (Vopani)')
-
-ggsave('f1_gridvsposition.pdf')
-
 ##### Engine by Constructor vs Purchased by Points per Constructor #####
 
 driver_constructor_results %>% 
@@ -215,20 +153,19 @@ stored_points_2020 %>%
   mutate(driverRef = factor(driverRef, levels = driver_order)) %>% 
 ggplot()+
   geom_col(aes(driverRef, sum_points, fill = own_engine)) +
+  scale_fill_viridis_d()+
   coord_flip() +
   ggtitle("Total Points per Driver on the 2020 Grid", subtitle = 'A majority of the points in 2020 were won by drivers who drove vehicles with the engine produced by their own constructor') +
   theme_minimal() +
   xlab("Driver")+
   ylab("Total Points Earned")+
-  scale_fill_manual('Engine', values = c(rgb(245, 111, 114, maxColorValue = 255), rgb(0, 222, 214, maxColorValue = 255)), 
-                    labels = c("Purchased",'Built'))+
-  labs(caption = 'Source: Kaggle (Vopani)')
+  labs(caption = 'Source: Vopani | Kaggle')
 
 ggsave('f1_pointsperdriver.pdf')
 
 
 
-##### __NOT__ GGANIMATE#####
+##### __NOT USED__ GGANIMATE#####
 # library(av)
 # library(gifski)
 # library(gganimate)
@@ -315,7 +252,7 @@ driver_constructor_results %>%
     theme_minimal()+
     xlab('Starting Position')+
     ylab('Finishing Position')+
-    labs(fill="% Built Engine",caption = 'Source: Kaggle (Vopani)')+
+    labs(fill="% Built Engine",caption = 'Source: Vopani | Kaggle')+
     ggtitle("Starting vs Finishing Position in 2020", subtitle = "Constructors who build their own engines tended to both start and finish better than those who did not")
   
   ggsave("heatmap_engineconstructor.pdf")
@@ -374,14 +311,16 @@ driver_constructor_results %>%
     mutate(driverRef = factor(driverRef, levels=driver_success_desc$driverRef)) %>% 
   ggplot()+
     geom_bar(aes(driverRef,diff, fill=built),stat='identity')+
+    scale_fill_viridis_d()+
     theme_minimal()+
     theme(axis.text.x = element_text(angle = 45))+
     theme(axis.text.x = element_text(hjust=1.0))+
     theme(axis.text.x = element_text(vjust=1.05))+
     xlab('Driver')+
     ylab('Differential')+
-    labs(fill="Constructor-Built Engine",caption = 'Source: Kaggle (Vopani)')+
+    labs(fill="Constructor-Built Engine",caption = 'Source: Vopani | Kaggle')+
     ggtitle("Number of First Places by Driver", subtitle = "Though the overall amount of constructor-built wins (303) is greater than non-constructor-built wins (276), the drivers' affect cannot be discounted")
   
   ggsave("driver_effect.pdf")
+  
   
