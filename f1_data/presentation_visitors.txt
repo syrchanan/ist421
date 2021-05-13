@@ -1,0 +1,17 @@
+who visited:
+
+christina
+matt
+rohith
+rachel
+gillian
+jordan
+
+I visited:
+rachel 
+gillian
+christina
+hardik
+matt
+jordan
+rohith
