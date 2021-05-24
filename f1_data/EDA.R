@@ -62,7 +62,7 @@ ggplot() +
   scale_color_viridis_d()+
   labs(caption = 'Source: Vopani | Kaggle')
 
-ggsave("f1_positionvsfastestlap.pdf")
+#ggsave("f1_positionvsfastestlap.pdf")
 
 ##### Engine by Constructor vs Purchased by Podium Position in 2020#####
 
@@ -84,7 +84,7 @@ ggplot() +
   scale_fill_viridis_d()+
   labs(caption = 'Source: Vopani | Kaggle')
 
-ggsave("f1_podiumconstructors.pdf")
+#ggsave("f1_podiumconstructors.pdf")
 
 ##### Linear model of total wins by engine manufacturers  #####
 
@@ -126,7 +126,7 @@ ggplot()+
   xlab('')+
   labs(caption = 'Source: Vopani | Kaggle')
 
-ggsave("f1_winenginemaker.pdf")
+#ggsave("f1_winenginemaker.pdf")
               
               
 ##### Engine by Constructor vs Purchased by Points per Constructor #####
@@ -161,7 +161,7 @@ ggplot()+
   ylab("Total Points Earned")+
   labs(caption = 'Source: Vopani | Kaggle')
 
-ggsave('f1_pointsperdriver.pdf')
+#ggsave('f1_pointsperdriver.pdf')
 
 
 
@@ -255,7 +255,7 @@ driver_constructor_results %>%
     labs(fill="% Built Engine",caption = 'Source: Vopani | Kaggle')+
     ggtitle("Starting vs Finishing Position in 2020", subtitle = "Constructors who build their own engines tended to both start and finish better than those who did not")
   
-  ggsave("heatmap_engineconstructor.pdf")
+  #ggsave("heatmap_engineconstructor.pdf")
   
 ##### Drivers on Own Engine Teams vs Not#####
   
@@ -321,6 +321,6 @@ driver_constructor_results %>%
     labs(fill="Constructor-Built Engine",caption = 'Source: Vopani | Kaggle')+
     ggtitle("Number of First Places by Driver", subtitle = "Though the overall amount of constructor-built wins (303) is greater than non-constructor-built wins (276), the drivers' affect cannot be discounted")
   
-  ggsave("driver_effect.pdf")
+  #ggsave("driver_effect.pdf")
   
   
